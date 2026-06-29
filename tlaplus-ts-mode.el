@@ -453,17 +453,36 @@ Checks: `tlaplus-java-home', JAVA_HOME env, toolbox-bundled JRE, then PATH."
    (executable-find "java")
    (error "Java not found. Set `tlaplus-java-home' or JAVA_HOME")))
 
-(defun tlaplus--detect-toolbox-java ()
-  "Find bundled Java from tla-toolbox installation."
+(defun tlaplus--find-toolbox-ini ()
+  "Locate toolbox.ini relative to tla-toolbox executable."
   (when-let ((toolbox (executable-find "tla-toolbox")))
-    (let ((store-dir (file-name-directory (file-truename toolbox))))
-      ;; Nix store: look for jre inside plugins
-      (when (string-match "\\(/nix/store/[^/]+\\)" store-dir)
-        (let ((base (match-string 1 store-dir)))
-          (car (file-expand-wildcards
-                (expand-file-name
-                 "libexec/toolbox/plugins/org.lamport.openjdk.*/jre/bin/java"
-                 base))))))))
+    (let ((dir (file-name-directory (file-truename toolbox))))
+      (cl-some (lambda (rel)
+                 (let ((f (expand-file-name rel dir)))
+                   (when (file-exists-p f) f)))
+               '("toolbox.ini"
+                 "../lib/tla-toolbox/toolbox.ini"
+                 "../libexec/toolbox/toolbox.ini")))))
+
+(defun tlaplus--parse-ini-vm (ini-file)
+  "Parse the -vm value from INI-FILE.
+Returns the Java executable path specified after the -vm line.
+Resolves relative paths against the directory containing INI-FILE."
+  (with-temp-buffer
+    (insert-file-contents ini-file)
+    (when (re-search-forward "^-vm$" nil t)
+      (forward-line 1)
+      (let* ((raw (string-trim (buffer-substring-no-properties
+                                (line-beginning-position) (line-end-position))))
+             (path (if (file-name-absolute-p raw)
+                       raw
+                     (expand-file-name raw (file-name-directory ini-file)))))
+        (when (file-executable-p path) path)))))
+
+(defun tlaplus--detect-toolbox-java ()
+  "Find bundled Java from tla-toolbox installation via toolbox.ini."
+  (when-let ((ini (tlaplus--find-toolbox-ini)))
+    (tlaplus--parse-ini-vm ini)))
 
 (defun tlaplus--tlatools-jar ()
   "Return path to tla2tools.jar.
