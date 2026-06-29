@@ -494,15 +494,12 @@ Auto-detects from `tla-toolbox' if available and `tlaplus-tlatools-path' is empt
 
 (defun tlaplus--detect-tlatools-jar ()
   "Try to find tla2tools.jar from tla-toolbox installation.
-Searches: nix store, common install directories, and PATH-adjacent locations."
+Searches: toolbox.ini directory, PATH-adjacent locations, well-known paths."
   (or
-   ;; Nix: follow tla-toolbox symlink into store
-   (when-let ((toolbox (executable-find "tla-toolbox")))
-     (let ((real (file-truename toolbox)))
-       (when (string-match "\\(/nix/store/[^/]+\\)" real)
-         (let ((jar (expand-file-name "libexec/toolbox/tla2tools.jar"
-                                      (match-string 1 real))))
-           (when (file-exists-p jar) jar)))))
+   ;; From toolbox.ini directory (works for both 1.7.4 and 1.8.0)
+   (when-let ((ini (tlaplus--find-toolbox-ini)))
+     (let ((jar (expand-file-name "tla2tools.jar" (file-name-directory ini))))
+       (when (file-exists-p jar) jar)))
    ;; Generic: look relative to tla-toolbox or tla2tools on PATH
    (when-let ((toolbox (or (executable-find "tla-toolbox")
                            (executable-find "tla2tools"))))
