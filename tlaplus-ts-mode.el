@@ -788,7 +788,11 @@ Falls back to column 0 when tree-sitter has no node at point
 
   (treesit-major-mode-setup)
   (setq-local indent-line-function #'tlaplus-ts-mode--indent-line)
-  (setq-local indent-region-function #'tlaplus-ts-mode--indent-region))
+  (setq-local indent-region-function #'tlaplus-ts-mode--indent-region)
+
+  (unless tlaplus-tlaps-enabled
+    (when (executable-find (car tlaplus-tlaps-command))
+      (setq tlaplus-tlaps-enabled t))))
 
 (if (treesit-ready-p 'tlaplus t)
     (add-to-list 'auto-mode-alist '("\\.tla\\'" . tlaplus-ts-mode)))
